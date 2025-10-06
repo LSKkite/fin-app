@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>INR Financial Goal Planner</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for better readability and Indian number format styling */
+        .input-box { border-color: #34D399; } /* Green-300 */
+        .output-box { background-color: #BFDBFE; } /* Blue-200 */
+        .final-output { background-color: #FCD34D; } /* Yellow-300 */
+        .section-header { border-bottom: 2px solid #D1D5DB; }
+        .bg-green-100-input { background-color: #D1FAE5; }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+
+        // --- Core Financial Calculation Functions ---
+
+        /**
+         * Formats a number into Indian Rupee format (Lakhs/Crores).
+         * @param {number} x The number to format.
+         * @returns {string} Formatted string with '₹' symbol.
+         */
+        function formatINR(x) {
+            if (isNaN(x)) return '₹0';
+            const num = Math.round(Math.abs(x));
+            // Use Intl.NumberFormat for locale-specific formatting (India uses 'en-IN')
+            return new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR',
+                maximumFractionDigits: 0
+            }).format(num);
+        }
+
+        /**
+         * Calculates the Future Value (FV) of a single amount, used for inflation.
+         * FV = PV * (1 + rate)^nper
+         */
+        function calculateFV(pv, rate, nper) {
+            return pv * Math.pow(1 + rate, nper);
+        }
+
+        /**
+         * Calculates the required Periodic Payment (PMT) for an annuity (SIP)
+         * to reach a specific Future Value (FV), assuming PV=0.
+         * PMT = rate * FV / (((1 + rate)^nper) - 1)
+         */
+        function calculateMonthlySIP(annualRate, nperMonths, fv) {
+            if (fv === 0 || nperMonths <= 0) return 0;
+            const monthlyRate = annualRate / 12;
+            if (monthlyRate === 0) return fv / nperMonths;
+
+            // This formula calculates the SIP required assuming payments at the END of the month (Type 0)
+            return monthlyRate * fv / (Math.pow(1 + monthlyRate, nperMonths) - 1);
+        }
+
+        /**
+         * Calculates the Present Value (PV) of an annuity (Corpus Needed)
+         * PV = PMT * [1 - (1 + rate)^(-nper)] / rate
+         */
+        function calculateRetirementCorpus(annualRate, nperYears, annualWithdrawal) {
+            if (annualRate === 0) return annualWithdrawal * nperYears;
+            // The rate is the net annual rate (r_net)
+            return annualWithdrawal * (1 - Math.pow(1 + annualRate, -nperYears)) / annualRate;
+        }
+
+
+        // --- Main Calculation and UI Update Logic ---
+
+        function updateAllCalculations() {
+            // --- 1. Get Inputs ---
+            const age = parseFloat(document.getElementById('input-age').value);
+            const r_invest = parseFloat(document.getElementById('input-r-invest').value) / 100;
+            const i_gen = parseFloat(document.getElementById('input-i-gen').value) / 100;
+            const i_edu = parseFloat(document.getElementById('input-i-edu').value) / 100;
+
+            const childAge = parseFloat(document.getElementById('input-child-age').value);
+            const targetEduAge = parseFloat(document.getElementById('input-target-edu-age').value);
+            const currentEduCost = parseFloat(document.getElementById('input-current-edu-cost').value);
+
+            const targetRetireAge = parseFloat(document.getElementById('input-target-retire-age').value);
+            const lifeExpectancy = parseFloat(document.getElementById('input-life-expectancy').value);
+            const currentAnnualExpense = parseFloat(document.getElementById('input-current-annual-expense').value);
+
+            // Simple validation
+            if (isNaN(age) || isNaN(r_invest) || isNaN(i_gen) || isNaN(i_edu)) return;
+
+
+            // --- 2. Education Goal Calculations ---
+            let n_edu = Math.max(0, targetEduAge - childAge); // Years to Education
+            let fv_edu = 0;
+            let pmt_edu = 0;
+
+            if (n_edu > 0) {
+                // Future Value of Education Cost (FV = PV * (1 + i_edu)^n_edu)
+                fv_edu = calculateFV(currentEduCost, i_edu, n_edu);
+
+                // Required Monthly SIP for Education
+                pmt_edu = calculateMonthlySIP(r_invest, n_edu * 12, fv_edu);
+            }
+
+            document.getElementById('output-n-edu').textContent = n_edu.toFixed(0);
+            document.getElementById('output-fv-edu').textContent = formatINR(fv_edu);
+            document.getElementById('output-pmt-edu').textContent = formatINR(pmt_edu);
+
+
+            // --- 3. Retirement Goal Calculations ---
+            let n_retire = Math.max(0, targetRetireAge - age); // Years to Retirement
+            let n_life = Math.max(0, lifeExpectancy - targetRetireAge); // Years in Retirement
+            let inflatedAnnualExpense = 0;
+            let r_net = 0;
+            let fv_retire_corpus = 0;
+            let pmt_retire = 0;
+
+            if (n_retire > 0) {
+                // Inflated Annual Expense at Retirement (Year 1)
+                inflatedAnnualExpense = calculateFV(currentAnnualExpense, i_gen, n_retire);
+
+                // Post-Retirement Net Growth Rate (r_net = (1+r_invest)/(1+i_gen) - 1)
+                r_net = (1 + r_invest) / (1 + i_gen) - 1;
+
+                if (n_life > 0) {
+                    // Total Corpus Needed at Retirement (PV of Annuity)
+                    fv_retire_corpus = calculateRetirementCorpus(r_net, n_life, inflatedAnnualExpense);
+                }
+
+                // Required Monthly SIP for Retirement
+                pmt_retire = calculateMonthlySIP(r_invest, n_retire * 12, fv_retire_corpus);
+            }
+
+            document.getElementById('output-n-retire').textContent = n_retire.toFixed(0);
+            document.getElementById('output-n-life').textContent = n_life.toFixed(0);
+            document.getElementById('output-inflated-expense').textContent = formatINR(inflatedAnnualExpense);
+            document.getElementById('output-r-net').textContent = (r_net * 100).toFixed(2) + '%';
+            document.getElementById('output-fv-retire').textContent = formatINR(fv_retire_corpus);
+            document.getElementById('output-pmt-retire').textContent = formatINR(pmt_retire);
+
+
+            // --- 4. Summary ---
+            const total_pmt = pmt_edu + pmt_retire;
+            document.getElementById('output-total-pmt').textContent = formatINR(total_pmt);
+        }
+
+        // Attach event listeners to all inputs to trigger recalculation
+        document.addEventListener('DOMContentLoaded', () => {
+            const inputs = document.querySelectorAll('input[type="number"]');
+            inputs.forEach(input => {
+                input.addEventListener('input', updateAllCalculations);
+            });
+            // Run initial calculation on load
+            updateAllCalculations();
+        });
+    </script>
+</head>
+<body class="bg-gray-50 p-4 md:p-8 font-sans">
+
+    <div class="max-w-4xl mx-auto bg-white shadow-xl rounded-xl p-6 md:p-10 border border-gray-200">
+        <h1 class="text-3xl md:text-4xl font-extrabold text-blue-800 mb-6 text-center">
+            ₹ Financial Goal Planner (INR)
+        </h1>
+        <p class="text-gray-600 mb-8 text-center">
+            Estimate the monthly SIP needed for your children's education and retirement corpus.
+        </p>
+
+        <!-- General Assumptions -->
+        <div class="mb-8 p-4 rounded-lg border border-gray-300">
+            <h2 class="text-xl font-bold text-gray-700 section-header mb-4 pb-2">I. General Assumptions</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label class="flex flex-col">
+                    <span class="text-sm font-medium text-gray-600">Person's Current Age (Years)</span>
+                    <input id="input-age" type="number" value="35" class="p-2 border rounded-md bg-green-100-input input-box focus:ring-green-500 focus:border-green-500">
+                </label>
+                <label class="flex flex-col">
+                    <span class="text-sm font-medium text-gray-600">Assumed MF Annual Return </span>
+                    <input id="input-r-invest" type="number" value="12.00" step="0.5" class="p-2 border rounded-md bg-green-100-input input-box focus:ring-green-500 focus:border-green-500">
+                </label>
+                <label class="flex flex-col">
+                    <span class="text-sm font-medium text-gray-600">General/Retirement Expense Inflation )</span>
+                    <input id="input-i-gen" type="number" value="5.00" step="0.1" class="p-2 border rounded-md bg-green-100-input input-box focus:ring-green-500 focus:border-green-500">
+                </label>
+                <label class="flex flex-col">
+                    <span class="text-sm font-medium text-gray-600">Education Cost Inflation </span>
+                    <input id="input-i-edu" type="number" value="10.00" step="0.1" class="p-2 border rounded-md bg-green-100-input input-box focus:ring-green-500 focus:border-green-500">
+                </label>
+            </div>
+        </div>
+
+        <!-- Goal 1: Education Fund -->
+        <div class="mb-8 p-4 rounded-lg border border-gray-300">
+            <h2 class="text-xl font-bold text-blue-800 section-header mb-4 pb-2">II. Goal 1: Children's Education Fund</h2>
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <label class="flex flex-col">
+                    <span class="text-sm font-medium text-gray-600">Child's Current Age (Years)</span>
+                    <input id="input-child-age" type="number" value="5" class="p-2 border rounded-md bg-green-100-input input-box">
+                </label>
+                <label class="flex flex-col">
+                    <span class="text-sm font-medium text-gray-600">Education Target Start Age (Years)</span>
+                    <input id="input-target-edu-age" type="number" value="18" class="p-2 border rounded-md bg-green-100-input input-box">
+                </label>
+                <label class="flex flex-col col-span-2">
+                    <span class="text-sm font-medium text-gray-600">Current Annual Education Cost (PresentValue)</span>
+                    <input id="input-current-edu-cost" type="number" value="500000" class="p-2 border rounded-md bg-green-100-input input-box">
+                </label>
+            </div>
+
+            <div class="bg-blue-50/70 p-4 rounded-lg space-y-3 output-box">
+                <p class="flex justify-between font-semibold text-gray-700">
+                    Years to Education Goal :
+                    <span id="output-n-edu" class="text-blue-700">13</span>
+                </p>
+                <p class="flex justify-between font-semibold text-gray-700 border-t pt-2 border-blue-200">
+                    Future Value (FV) of Education Cost:
+                    <span id="output-fv-edu" class="text-blue-700 text-lg">₹1,73,00,000</span>
+                </p>
+                <p class="flex justify-between font-extrabold text-lg text-blue-800 border-t pt-2 border-blue-300">
+                    Required Monthly SIP :
+                    <span id="output-pmt-edu" class="text-green-600">₹5,477</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- Goal 2: Retirement Corpus -->
+        <div class="mb-8 p-4 rounded-lg border border-gray-300">
+            <h2 class="text-xl font-bold text-blue-800 section-header mb-4 pb-2">III. Goal 2: Retirement Corpus</h2>
+
+            <!-- Inputs -->
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <label class="flex flex-col">
+                    <span class="text-sm font-medium text-gray-600">Target Retirement Age</span>
+                    <input id="input-target-retire-age" type="number" value="60" class="p-2 border rounded-md bg-green-100-input input-box">
+                </label>
+                <label class="flex flex-col">
+                    <span class="text-sm font-medium text-gray-600">Retirement Life Expectancy (End Age)</span>
+                    <input id="input-life-expectancy" type="number" value="85" class="p-2 border rounded-md bg-green-100-input input-box">
+                </label>
+                <label class="flex flex-col col-span-2">
+                    <span class="text-sm font-medium text-gray-600">Current Annual Expense (PV - ₹)</span>
+                    <input id="input-current-annual-expense" type="number" value="360000" class="p-2 border rounded-md bg-green-100-input input-box">
+                </label>
+            </div>
+
+            <!-- Calculations -->
+            <div class="bg-blue-50/70 p-4 rounded-lg space-y-3 output-box">
+                <div class="grid grid-cols-2 gap-y-3">
+                    <p class="font-semibold text-gray-700">Years to Retirement :</p>
+                    <span id="output-n-retire" class="text-blue-700 text-right">25</span>
+                    
+                    <p class="font-semibold text-gray-700">Years in Retirement :</p>
+                    <span id="output-n-life" class="text-blue-700 text-right">25</span>
+                    
+                    <p class="font-semibold text-gray-700 border-t pt-2 border-blue-200 col-span-2">
+                        Post-Retirement Net Growth Rate :
+                        <span id="output-r-net" class="text-blue-700 float-right">6.67%</span>
+                    </p>
+
+                    <p class="font-semibold text-gray-700 col-span-2">
+                        Inflated Annual Expense at Retirement (Year 1):
+                        <span id="output-inflated-expense" class="text-blue-700 float-right">₹15,28,740</span>
+                    </p>
+                </div>
+
+                <p class="flex justify-between font-semibold text-gray-700 border-t pt-2 border-blue-200">
+                    Total Corpus Needed at Retirement :
+                    <span id="output-fv-retire" class="text-blue-700 text-lg">₹1,75,41,698</span>
+                </p>
+                <p class="flex justify-between font-extrabold text-lg text-blue-800 border-t pt-2 border-blue-300">
+                    Required Monthly SIP :
+                    <span id="output-pmt-retire" class="text-green-600">₹15,720</span>
+                </p>
+            </div>
+        </div>
+
+        <!-- Summary -->
+        <div class="p-4 rounded-lg final-output shadow-lg">
+            <h2 class="text-2xl font-extrabold text-gray-800 mb-3 text-center">IV. Total Required Monthly Investment</h2>
+            <div class="flex justify-between font-semibold text-gray-700 text-lg mb-2">
+                <span>Education Fund SIP:</span>
+                <span id="summary-edu" class="text-green-600" x-text="formatINR(pmt_edu)">₹5,477</span>
+            </div>
+            <div class="flex justify-between font-semibold text-gray-700 text-lg mb-4">
+                <span>Retirement Corpus SIP:</span>
+                <span id="summary-retire" class="text-green-600" x-text="formatINR(pmt_retire)">₹15,720</span>
+            </div>
+            <div class="flex justify-between font-extrabold text-xl md:text-2xl text-red-700 border-t-2 border-yellow-500 pt-3">
+                <span>TOTAL MONTHLY INVESTMENT REQUIRED:</span>
+                <span id="output-total-pmt" class="text-red-700">₹21,197</span>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+</html>
