@@ -150,6 +150,8 @@
             // --- 4. Summary ---
             const total_pmt = pmt_edu + pmt_retire;
             document.getElementById('output-total-pmt').textContent = formatINR(total_pmt);
+            document.getElementById('summary-edu').textContent = formatINR(pmt_edu);
+            document.getElementById('summary-retire').textContent = formatINR(pmt_retire);
         }
 
         // Attach event listeners to all inputs to trigger recalculation
@@ -172,6 +174,12 @@
         <p class="text-gray-600 mb-8 text-center">
             Estimate the monthly SIP needed for your children's education and retirement corpus.
         </p>
+
+        <div class="text-center mb-8">
+            <a href="https://YOUR-GITHUB-USERNAME.github.io/YOUR-REPOSITORY-NAME/" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-800 underline transition-colors duration-300">
+                View on GitHub
+            </a>
+        </div>
 
         <!-- General Assumptions -->
         <div class="mb-8 p-4 rounded-lg border border-gray-300">
@@ -210,22 +218,22 @@
                 </label>
                 <label class="flex flex-col col-span-2">
                     <span class="text-sm font-medium text-gray-600">Current Annual Education Cost (PresentValue)</span>
-                    <input id="input-current-edu-cost" type="number" value="500000" class="p-2 border rounded-md bg-green-100-input input-box">
+                    <input id="input-current-edu-cost" type="number" value="100000" class="p-2 border rounded-md bg-green-100-input input-box">
                 </label>
             </div>
 
             <div class="bg-blue-50/70 p-4 rounded-lg space-y-3 output-box">
                 <p class="flex justify-between font-semibold text-gray-700">
                     Years to Education Goal :
-                    <span id="output-n-edu" class="text-blue-700">13</span>
+                    <span id="output-n-edu" class="text-blue-700"></span>
                 </p>
                 <p class="flex justify-between font-semibold text-gray-700 border-t pt-2 border-blue-200">
                     Future Value (FV) of Education Cost:
-                    <span id="output-fv-edu" class="text-blue-700 text-lg">₹1,73,00,000</span>
+                    <span id="output-fv-edu" class="text-blue-700 text-lg"></span>
                 </p>
                 <p class="flex justify-between font-extrabold text-lg text-blue-800 border-t pt-2 border-blue-300">
                     Required Monthly SIP :
-                    <span id="output-pmt-edu" class="text-green-600">₹5,477</span>
+                    <span id="output-pmt-edu" class="text-green-600"></span>
                 </p>
             </div>
         </div>
@@ -254,29 +262,29 @@
             <div class="bg-blue-50/70 p-4 rounded-lg space-y-3 output-box">
                 <div class="grid grid-cols-2 gap-y-3">
                     <p class="font-semibold text-gray-700">Years to Retirement :</p>
-                    <span id="output-n-retire" class="text-blue-700 text-right">25</span>
+                    <span id="output-n-retire" class="text-blue-700 text-right"></span>
                     
                     <p class="font-semibold text-gray-700">Years in Retirement :</p>
-                    <span id="output-n-life" class="text-blue-700 text-right">25</span>
+                    <span id="output-n-life" class="text-blue-700 text-right"></span>
                     
                     <p class="font-semibold text-gray-700 border-t pt-2 border-blue-200 col-span-2">
                         Post-Retirement Net Growth Rate :
-                        <span id="output-r-net" class="text-blue-700 float-right">6.67%</span>
+                        <span id="output-r-net" class="text-blue-700 float-right"></span>
                     </p>
 
                     <p class="font-semibold text-gray-700 col-span-2">
                         Inflated Annual Expense at Retirement (Year 1):
-                        <span id="output-inflated-expense" class="text-blue-700 float-right">₹15,28,740</span>
+                        <span id="output-inflated-expense" class="text-blue-700 float-right"></span>
                     </p>
                 </div>
 
                 <p class="flex justify-between font-semibold text-gray-700 border-t pt-2 border-blue-200">
                     Total Corpus Needed at Retirement :
-                    <span id="output-fv-retire" class="text-blue-700 text-lg">₹1,75,41,698</span>
+                    <span id="output-fv-retire" class="text-blue-700 text-lg"></span>
                 </p>
                 <p class="flex justify-between font-extrabold text-lg text-blue-800 border-t pt-2 border-blue-300">
                     Required Monthly SIP :
-                    <span id="output-pmt-retire" class="text-green-600">₹15,720</span>
+                    <span id="output-pmt-retire" class="text-green-600"></span>
                 </p>
             </div>
         </div>
@@ -286,15 +294,15 @@
             <h2 class="text-2xl font-extrabold text-gray-800 mb-3 text-center">IV. Total Required Monthly Investment</h2>
             <div class="flex justify-between font-semibold text-gray-700 text-lg mb-2">
                 <span>Education Fund SIP:</span>
-                <span id="summary-edu" class="text-green-600" x-text="formatINR(pmt_edu)">₹5,477</span>
+                <span id="summary-edu" class="text-green-600"></span>
             </div>
             <div class="flex justify-between font-semibold text-gray-700 text-lg mb-4">
                 <span>Retirement Corpus SIP:</span>
-                <span id="summary-retire" class="text-green-600" x-text="formatINR(pmt_retire)">₹15,720</span>
+                <span id="summary-retire" class="text-green-600"></span>
             </div>
             <div class="flex justify-between font-extrabold text-xl md:text-2xl text-red-700 border-t-2 border-yellow-500 pt-3">
                 <span>TOTAL MONTHLY INVESTMENT REQUIRED:</span>
-                <span id="output-total-pmt" class="text-red-700">₹21,197</span>
+                <span id="output-total-pmt" class="text-red-700"></span>
             </div>
         </div>
 
